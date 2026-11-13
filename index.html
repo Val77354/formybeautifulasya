@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0510">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta property="og:title" content="For My Beautiful Asya">
+<meta property="og:description" content="A little night sky, made by Valeri.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%99%A5%3C/text%3E%3C/svg%3E">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<title>For My Beautiful Asya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap">
+<style>
+  /* Layout: one night sky on a full-screen canvas; each chapter's words sit in a glass panel at the bottom, its game above. */
+  :root {
+    color-scheme: dark;
+    --night: #0b0510;
+    --plum: #26102a;
+    --rose: #ff4d7d;
+    --blush: #ffb8ca;
+    --gold: #f6c97b;
+    --paper: #fbf3ea;
+    --sepia: #4a2a2a;
+    --ink: #f8eef3;
+    --dim: rgba(248, 238, 243, 0.64);
+    --faint: rgba(248, 238, 243, 0.15);
+    --glass: rgba(30, 14, 34, 0.58);
+    --display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    --hand: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--night); color: var(--ink); overflow: hidden;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+  }
+  canvas#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hud {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    pointer-events: none;
+  }
+  .path { display: flex; align-items: center; gap: 0; }
+  .path i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); transition: background .5s, box-shadow .5s; }
+  .path b { width: 16px; height: 1px; background: var(--faint); transition: background .5s; }
+  .path i.lit { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+  .path b.lit { background: rgba(246, 201, 123, .6); }
+  .path i.now { background: var(--rose); box-shadow: 0 0 12px var(--rose); }
+  .mute {
+    pointer-events: auto; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim);
+    background: var(--glass); border: 1px solid var(--faint); border-radius: 999px; padding: 7px 12px; cursor: pointer;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none;
+    padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  }
+  .card {
+    max-width: 30rem; margin: 0 auto; padding: 18px 20px 16px; border-radius: 26px;
+    background: linear-gradient(180deg, rgba(42, 18, 46, .62), rgba(20, 8, 24, .72));
+    border: 1px solid rgba(255, 184, 202, .16);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    display: flex; flex-direction: column; gap: 8px; text-align: center;
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .card.out { opacity: 0; transform: translateY(14px); }
+  .chapter { font-family: var(--mono); font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
+  .title { font-family: var(--display); font-size: clamp(28px, 7.6vw, 38px); line-height: 1.08; text-wrap: balance; }
+  .title i { color: var(--blush); }
+  .body { font-family: var(--display); font-style: italic; font-size: clamp(17px, 4.6vw, 20px); line-height: 1.35; color: var(--dim); text-wrap: balance; }
+  .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+  .actions:empty { display: none; }
+  .btn {
+    pointer-events: auto; font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+    color: var(--night); background: linear-gradient(180deg, #ffd9a0, var(--gold)); border: 0; border-radius: 999px; padding: 12px 20px;
+    box-shadow: 0 6px 22px rgba(246, 201, 123, .35);
+  }
+  .btn.ghost { color: var(--ink); background: transparent; border: 1px solid var(--faint); box-shadow: none; }
+  .btn:focus-visible, .mute:focus-visible { outline: 2px solid var(--blush); outline-offset: 3px; }
+  .hint { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); min-height: 1em; }
+  .toast {
+    position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 54px); z-index: 4; width: min(88vw, 26rem);
+    transform: translate(-50%, -12px); opacity: 0; pointer-events: none; transition: opacity .5s ease, transform .5s ease;
+    padding: 14px 18px; border-radius: 20px; text-align: center;
+    background: linear-gradient(180deg, rgba(255, 233, 196, .95), rgba(246, 201, 123, .92)); color: #3a1f12;
+    box-shadow: 0 14px 40px rgba(246, 201, 123, .3);
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .toast small { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; opacity: .7; margin-bottom: 4px; }
+  .toast span { font-family: var(--display); font-size: 21px; line-height: 1.2; }
+  .extra { position: fixed; inset: 0; z-index: 2; pointer-events: none; display: flex; align-items: center; justify-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .extra > * { pointer-events: auto; }
+  /* chapter III slider */
+  .slider { position: fixed; left: 50%; transform: translateX(-50%); width: min(84vw, 24rem); display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .eq { font-family: var(--mono); font-size: clamp(11.5px, 3.3vw, 14px); color: var(--blush); text-align: center; line-height: 1.5; }
+  .eq b { color: var(--gold); font-weight: 500; font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; background: transparent; touch-action: none; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--rose), var(--gold)); }
+  input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--rose), var(--gold)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -13px; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 6px rgba(255, 77, 125, .35), 0 0 22px var(--rose); }
+  input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 6px rgba(255, 77, 125, .35), 0 0 22px var(--rose); }
+  input[type=range]:focus-visible { outline: 2px solid var(--blush); outline-offset: 4px; border-radius: 8px; }
+  /* chapter V letter */
+  .letter {
+    position: relative; width: min(90vw, 25rem); max-height: 62vh; margin-top: -14vh; border-radius: 6px; overflow: hidden;
+    background: radial-gradient(120% 90% at 30% 10%, #fffaf3, var(--paper) 60%, #f1e2cf); color: var(--sepia);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .55); transform: rotate(-1.2deg);
+  }
+  .letter .text { padding: 26px 24px 30px; font-family: var(--hand); font-size: 23px; line-height: 1.32; overflow-y: auto; max-height: 62vh; }
+  .letter .text p { margin: 0 0 12px; }
+  .letter .sign { text-align: right; font-size: 27px; color: #b3274f; }
+  .letter canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; transition: opacity 1s ease; }
+  /* chapter VI question */
+  .ask { display: flex; gap: 14px; margin-top: -10vh; }
+  .yes, .no { font-family: var(--display); font-size: 24px; border-radius: 999px; padding: 12px 28px; cursor: pointer; border: 0; }
+  .yes { background: linear-gradient(180deg, #ff7a9c, var(--rose)); color: #fff; box-shadow: 0 10px 34px rgba(255, 77, 125, .5); }
+  .no { background: rgba(255, 255, 255, .08); color: var(--ink); border: 1px solid var(--faint); transition: transform .35s cubic-bezier(.3, 1.6, .5, 1); }
+  /* finale coupons */
+  .coupons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(92vw, 26rem); margin-top: -18vh; }
+  .coupon {
+    position: relative; min-height: 112px; padding: 14px 12px; border-radius: 16px; cursor: pointer; text-align: left;
+    font-family: var(--display); font-size: 19px; line-height: 1.15; color: #3a1f12; border: 0;
+    background: linear-gradient(160deg, #fff4e2, #f6d9a6); box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    -webkit-mask: radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+            mask: radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+    transition: transform .5s ease, opacity .5s ease;
+  }
+  .coupon small { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: #a3542f; margin-bottom: 6px; }
+  .coupon.dim { opacity: .25; transform: scale(.94); }
+  .coupon.picked { transform: scale(1.04) rotate(-1deg); background: linear-gradient(160deg, #ffe0ea, #ffb8ca); }
+  .coupon:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .hold { position: relative; width: 132px; height: 132px; border: 0; background: none; padding: 0; cursor: pointer; touch-action: none; -webkit-touch-callout: none; margin-top: -14vh; }
+  .hold svg { width: 100%; height: 100%; overflow: visible; }
+  .hold:focus-visible { outline: 2px solid var(--gold); outline-offset: 6px; border-radius: 50%; }
+  @media (prefers-reduced-motion: reduce) { .card, .toast, .coupon, .no { transition: none; } }
+</style>
+
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<div class="hud">
+  <div class="path" id="path" aria-hidden="true"></div>
+  <button class="mute" id="mute" hidden>♪ on</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><small id="toastN"></small><span id="toastT"></span></div>
+
+<div class="extra" id="extra"></div>
+
+<div class="panel">
+  <div class="card" id="card" aria-live="polite">
+    <div class="chapter" id="chapter">For you</div>
+    <div class="title" id="title">Drawn For You</div>
+    <div class="body" id="body">A small night sky, made by hand, for a not-so-great day.</div>
+    <div class="actions" id="actions"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ================= setup =================
+  const $ = (id) => document.getElementById(id);
+  const cv = $('sky'), ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W = 0, H = 0, DPR = 1, neb = null;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+  const backOut = (x) => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const heartX = (t) => 16 * Math.pow(Math.sin(t), 3);
+  const heartY = (t) => -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+  const beat = (s) => { const b = s % 1.15; return Math.exp(-Math.pow((b - 0.1) / 0.05, 2)) + 0.55 * Math.exp(-Math.pow((b - 0.33) / 0.06, 2)); };
+
+  const NAME = 'Asya';
+  const FROM = 'Valeri';
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    // A painted nebula, drawn once per size.
+    neb = document.createElement('canvas'); neb.width = cv.width; neb.height = cv.height;
+    const n = neb.getContext('2d'); n.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g0 = n.createLinearGradient(0, 0, 0, H); g0.addColorStop(0, '#07040d'); g0.addColorStop(0.55, '#140819'); g0.addColorStop(1, '#2a0f27');
+    n.fillStyle = g0; n.fillRect(0, 0, W, H);
+    const blob = (x, y, r, c) => { const g = n.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)'); n.fillStyle = g; n.fillRect(0, 0, W, H); };
+    blob(W * 0.2, H * 0.25, W * 0.7, 'rgba(110,40,140,0.28)');
+    blob(W * 0.85, H * 0.15, W * 0.55, 'rgba(255,77,125,0.13)');
+    blob(W * 0.6, H * 0.7, W * 0.8, 'rgba(70,40,150,0.22)');
+    blob(W * 0.1, H * 0.9, W * 0.6, 'rgba(255,120,150,0.12)');
+  }
+  addEventListener('resize', resize); resize();
+
+  // ================= sound (made in the browser, starts only on her tap) =================
+  let AC = null, master = null, wet = null, musicOn = false, pad = null;
+  const SCALE = [392, 440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5];
+  function audioStart() {
+    if (AC) return;
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
+      // a soft echo for space
+      const d = AC.createDelay(1); d.delayTime.value = 0.33; const fb = AC.createGain(); fb.gain.value = 0.35;
+      const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+      wet = AC.createGain(); wet.gain.value = 0.35;
+      wet.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(master);
+    } catch { AC = null; }
+  }
+  function chime(i, vol = 0.16) {
+    if (!AC || !musicOn) return;
+    const f = SCALE[((i % SCALE.length) + SCALE.length) % SCALE.length];
+    const t = AC.currentTime;
+    for (const [mult, type, v] of [[1, 'sine', 1], [2, 'triangle', 0.18], [3.01, 'sine', 0.06]]) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.value = f * mult;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+      o.connect(g); g.connect(master); g.connect(wet); o.start(t); o.stop(t + 2.3);
+    }
+  }
+  function chord(root = 0) { [0, 2, 4, 7].forEach((s, k) => setTimeout(() => chime(root + s, 0.12), k * 110)); }
+  function padStart() {
+    if (!AC || pad) return;
+    const g = AC.createGain(); g.gain.value = 0; g.connect(master);
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(g);
+    const voices = [130.81, 196, 261.63, 329.63].flatMap((f) => [f, f * 1.004]).map((f) => { const o = AC.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.connect(lp); o.start(); return o; });
+    const lfo = AC.createOscillator(), lg = AC.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    g.gain.linearRampToValueAtTime(0.03, AC.currentTime + 4);
+    pad = { g, voices, lfo };
+    // a slow music-box melody, one note every couple of seconds
+    let step = 0; const tune = [2, 4, 5, 4, 2, 1, 2, 4, 7, 5, 4, 2];
+    pad.timer = setInterval(() => { if (musicOn) chime(tune[step++ % tune.length], 0.05); }, 2200);
+  }
+  function setMusic(on) {
+    musicOn = on; $('mute').hidden = false; $('mute').textContent = on ? '♪ on' : '♪ off';
+    if (on) { audioStart(); AC?.resume?.(); padStart(); }
+    if (pad && AC) pad.g.gain.linearRampToValueAtTime(on ? 0.03 : 0, AC.currentTime + 0.6);
+  }
+  $('mute').addEventListener('click', (e) => { e.stopPropagation(); setMusic(!musicOn); });
+
+  // ================= the sky (every scene) =================
+  const stars = Array.from({ length: 190 }, () => ({ x: Math.random(), y: Math.random(), z: rand(0.2, 1), p: rand(0, 6.28), s: rand(0.4, 1.6) }));
+  const shooting = [];
+  let sparks = [];
+  function drawSky(now, dt) {
+    ctx.drawImage(neb, 0, 0, W, H);
+    for (const s of stars) {
+      const tw = reduce ? 0.75 : 0.4 + 0.6 * Math.sin(now * s.s + s.p) ** 2;
+      const y = ((s.y + (reduce ? 0 : now * 0.004 * s.z)) % 1) * H;
+      ctx.fillStyle = `rgba(255,236,246,${0.7 * tw * s.z})`;
+      ctx.beginPath(); ctx.arc(s.x * W, y, 0.5 + s.z * 1.1, 0, 6.283); ctx.fill();
+    }
+    // the moon, top right
+    const mx = W * 0.82, my = H * 0.13, mr = Math.min(W, H) * 0.045;
+    const mg = ctx.createRadialGradient(mx, my, mr * 0.2, mx, my, mr * 4); mg.addColorStop(0, 'rgba(255,230,210,0.22)'); mg.addColorStop(1, 'rgba(255,230,210,0)');
+    ctx.fillStyle = mg; ctx.fillRect(mx - mr * 4, my - mr * 4, mr * 8, mr * 8);
+    ctx.fillStyle = '#fff1df'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.283); ctx.fill();
+    ctx.fillStyle = 'rgba(11,5,16,0.9)'; ctx.beginPath(); ctx.arc(mx + mr * 0.45, my - mr * 0.2, mr * 0.92, 0, 6.283); ctx.fill();
+    // shooting stars now and then
+    if (!reduce && Math.random() < dt * 0.12) shooting.push({ x: rand(0, W), y: rand(0, H * 0.4), vx: rand(380, 560), vy: rand(120, 220), life: 1 });
+    for (const s of shooting) {
+      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 1.4;
+      const g = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * 0.18, s.y - s.vy * 0.18);
+      g.addColorStop(0, `rgba(255,240,250,${clamp(s.life)})`); g.addColorStop(1, 'rgba(255,240,250,0)');
+      ctx.strokeStyle = g; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * 0.18, s.y - s.vy * 0.18); ctx.stroke();
+    }
+    for (let i = shooting.length - 1; i >= 0; i--) if (shooting[i].life <= 0) shooting.splice(i, 1);
+  }
+  // little sparkle bursts used everywhere
+  function burst(x, y, n = 24, colors = ['#f6c97b', '#ffb8ca', '#ff4d7d', '#fff']) {
+    for (let i = 0; i < n; i++) { const a = rand(0, 6.283), sp = rand(40, 220); sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, decay: rand(0.8, 1.6), r: rand(1, 2.6), c: colors[i % colors.length] }); }
+  }
+  // fireworks shaped like the heart curve
+  function heartFirework(x, y, size = rand(7, 11)) {
+    const cols = [['#ff4d7d', '#ffb8ca'], ['#f6c97b', '#fff1d6'], ['#c77dff', '#ffb8ca']][Math.floor(rand(0, 3))];
+    for (let i = 0; i < 90; i++) { const t = (i / 90) * 6.283; sparks.push({ x, y, vx: heartX(t) * size, vy: heartY(t) * size, life: 1, decay: rand(0.45, 0.65), r: rand(1.4, 2.4), c: cols[i % 2], g: 40 }); }
+    chime(Math.floor(rand(3, 9)), 0.1);
+  }
+  function drawSparks(dt) {
+    for (const p of sparks) {
+      p.vx *= 1 - dt * 1.2; p.vy = p.vy * (1 - dt * 1.2) + (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= p.decay * dt;
+      ctx.globalAlpha = clamp(p.life); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    sparks = sparks.filter((p) => p.life > 0);
+  }
+  function heartPath(cx, cy, k) { ctx.beginPath(); for (let i = 0; i <= 100; i++) { const t = (i / 100) * 6.283; const x = cx + heartX(t) * k, y = cy + heartY(t) * k; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); }
+  function glowHeart(cx, cy, k, color, blur = 24) { ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.fillStyle = color; heartPath(cx, cy, k); ctx.fill(); ctx.restore(); }
+  function starShape(x, y, r, rot, color, glow = 14) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.shadowColor = color; ctx.shadowBlur = glow; ctx.fillStyle = color; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * 6.283 - Math.PI / 2, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+
+  // ================= words =================
+  const card = $('card');
+  function say({ chapter = '', title = '', body = '', hint = '', actions = [] }) {
+    card.classList.add('out');
+    setTimeout(() => {
+      $('chapter').textContent = chapter; $('title').innerHTML = title; $('body').innerHTML = body; $('hint').textContent = hint;
+      const box = $('actions'); box.innerHTML = '';
+      for (const a of actions) {
+        const b = document.createElement('button'); b.className = 'btn' + (a.ghost ? ' ghost' : ''); b.textContent = a.label;
+        b.addEventListener('click', (e) => { e.stopPropagation(); a.go(); }); box.appendChild(b);
+      }
+      $('body').hidden = !body;
+      card.classList.remove('out');
+    }, card.dataset.ready ? 420 : 0);
+    card.dataset.ready = '1';
+  }
+  function hint(text) { $('hint').textContent = text; }
+  let toastTimer = 0;
+  function toast(n, text) {
+    $('toastN').textContent = n; $('toastT').textContent = text; $('toast').classList.add('on');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), 3200);
+  }
+  const extra = $('extra');
+  const nextBtn = (label = 'Next chapter') => [{ label, go: () => next() }];
+
+  // ================= chapters =================
+  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+  const REASONS = [
+    'Your laugh. Especially the one you try to hold in.',
+    'How you make ordinary evenings feel like plans.',
+    'You notice the small things nobody else does.',
+    'The way you say my name when you’re sleepy.',
+    'You’re kind, even on days you’re tired of everything.',
+    'You’re the first person I want to tell everything to.',
+    'You. Exactly as you are today, mood included.',
+  ];
+
+  const scenes = [];
+
+  // ---------- intro ----------
+  scenes.push({
+    enter() {
+      say({
+        chapter: `For ${NAME} · from ${FROM}`,
+        title: `Drawn for <i>${NAME}</i>`,
+        body: 'A small night sky, made by hand, for a not-so-great day. Six little things to do. No rush at all.',
+        actions: [
+          { label: 'Start, with music ♪', go: () => { setMusic(true); chord(0); next(); } },
+          { label: 'Start quietly', ghost: true, go: () => { musicOn = false; audioStart(); $('mute').hidden = false; $('mute').textContent = '♪ off'; next(); } },
+        ],
+      });
+    },
+    draw(t, now) {
+      const k = Math.min(W, H) * 0.0065 * (1 + 0.08 * beat(now));
+      glowHeart(W / 2, H * 0.36, k, 'rgba(255,77,125,0.9)', 40);
+      glowHeart(W / 2, H * 0.36, k * 0.6, 'rgba(255,184,202,0.35)', 0);
+    },
+  });
+
+  // ---------- I. catch the stars ----------
+  scenes.push({
+    enter() {
+      this.falling = []; this.caught = 0; this.spawn = 0; this.done = false;
+      say({ chapter: 'Chapter I', title: 'Catch seven stars', body: 'Each one carries a reason. There are more, but seven fit on a screen.', hint: '0 / 7 · tap the falling stars' });
+    },
+    draw(t, now, dt) {
+      if (!this.done) {
+        this.spawn -= dt;
+        if (this.spawn <= 0 && this.falling.length < 5) { this.spawn = rand(0.5, 1.1); this.falling.push({ x: rand(0.12, 0.88) * W, y: -20, vy: rand(55, 95), rot: rand(0, 6), vr: rand(-1, 1), sway: rand(0, 6) }); }
+      }
+      for (const s of this.falling) {
+        s.y += s.vy * dt * (reduce ? 0.7 : 1); s.rot += s.vr * dt; s.x += Math.sin(now * 1.3 + s.sway) * 0.3;
+        const fade = clamp((H * 0.78 - s.y) / 80);
+        ctx.globalAlpha = fade; starShape(s.x, s.y, 13, s.rot, '#f6c97b', 22); ctx.globalAlpha = 1;
+      }
+      this.falling = this.falling.filter((s) => s.y < H * 0.8);
+      // caught stars line up across the top
+      for (let i = 0; i < this.caught; i++) starShape(W / 2 + (i - 3) * 26, H * 0.2, 8, now * 0.5 + i, '#ffd9a0', 12);
+      if (this.done) glowHeart(W / 2, H * 0.4, Math.min(W, H) * 0.005 * (1 + 0.08 * beat(now)), 'rgba(255,77,125,0.8)', 30);
+    },
+    down(x, y) {
+      if (this.done) return;
+      let best = null, bd = 46;
+      for (const s of this.falling) { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = s; } }
+      if (!best) return;
+      this.falling = this.falling.filter((s) => s !== best);
+      burst(best.x, best.y, 26);
+      chime(this.caught + 2);
+      toast(`Reason ${this.caught + 1} of 7`, REASONS[this.caught]);
+      this.caught++;
+      hint(`${this.caught} / 7 · tap the falling stars`);
+      if (this.caught === 7) {
+        this.done = true; this.falling = []; chord(2);
+        setTimeout(() => say({ chapter: 'Chapter I · done', title: 'Seven out of roughly <i>a million</i>.', body: 'I’ll tell you the rest in person.', actions: nextBtn() }), 1800);
+      }
+    },
+  });
+
+  // ---------- II. connect the constellation ----------
+  scenes.push({
+    enter() {
+      const N = 14;
+      this.k = Math.min(W * 0.019, H * 0.0125); this.cx = W / 2; this.cy = H * 0.37;
+      this.pts = Array.from({ length: N }, (_, i) => { const t = (i / N) * 6.283; return { x: this.cx + heartX(t) * this.k + rand(-4, 4), y: this.cy + heartY(t) * this.k + rand(-4, 4) }; });
+      this.next = 0; this.done = false; this.fill = 0; this.trail = null;
+      this.bg = Array.from({ length: 30 }, () => ({ x: rand(0.05, 0.95) * W, y: rand(0.12, 0.7) * H, r: rand(0.8, 1.8) }));
+      say({ chapter: 'Chapter II', title: 'Connect the stars', body: 'Tap them in order, or drag from one to the next. Someone has to draw this constellation, and it should be you.', hint: 'start at the glowing one' });
+    },
+    draw(t, now, dt) {
+      for (const b of this.bg) { ctx.fillStyle = 'rgba(255,236,246,0.35)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.283); ctx.fill(); }
+      if (this.done) {
+        this.fill = Math.min(1, this.fill + dt * 0.6);
+        ctx.save(); ctx.globalAlpha = 0.35 * easeOut(this.fill);
+        const g = ctx.createRadialGradient(this.cx, this.cy, 0, this.cx, this.cy, this.k * 18); g.addColorStop(0, '#ff4d7d'); g.addColorStop(1, 'rgba(255,77,125,0)');
+        ctx.fillStyle = g; heartPath(this.cx, this.cy, this.k * (1 + 0.05 * beat(now))); ctx.fill(); ctx.restore();
+      }
+      // drawn lines
+      ctx.save(); ctx.strokeStyle = 'rgba(255,184,202,0.9)'; ctx.lineWidth = 1.6; ctx.shadowColor = '#ff4d7d'; ctx.shadowBlur = 12;
+      ctx.beginPath();
+      for (let i = 0; i < this.next; i++) { const p = this.pts[i]; i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
+      if (this.done) ctx.closePath();
+      ctx.stroke();
+      if (this.trail && this.next > 0 && !this.done) { const p = this.pts[this.next - 1]; ctx.setLineDash([4, 6]); ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(this.trail.x, this.trail.y); ctx.stroke(); }
+      ctx.restore();
+      // the stars
+      this.pts.forEach((p, i) => {
+        const isNext = i === this.next && !this.done, lit = i < this.next || this.done;
+        const r = isNext ? 7 + 2.5 * Math.sin(now * 5) : lit ? 5.5 : 4;
+        starShape(p.x, p.y, r, 0, lit ? '#ffd9a0' : isNext ? '#ffffff' : 'rgba(255,236,246,0.55)', isNext ? 22 : 10);
+        if (!lit) { ctx.fillStyle = 'rgba(248,238,243,0.55)'; ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), p.x, p.y - 12); }
+      });
+      if (this.done) {
+        ctx.fillStyle = `rgba(246,201,123,${0.8 * this.fill})`; ctx.font = '11px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+        ctx.fillText(`CONSTELLATION · ${NAME.toUpperCase()} & ${FROM.toUpperCase()}`, this.cx, this.cy + this.k * 19);
+        ctx.fillStyle = `rgba(248,238,243,${0.5 * this.fill})`; ctx.fillText('CATALOGUED TONIGHT · MAGNITUDE: BRIGHTEST', this.cx, this.cy + this.k * 19 + 16);
+      }
+    },
+    tryHit(x, y) {
+      if (this.done) return;
+      const p = this.pts[this.next];
+      if (Math.hypot(p.x - x, p.y - y) > 34) return;
+      this.next++; burst(p.x, p.y, 12); chime(this.next);
+      if (this.next === this.pts.length) {
+        this.done = true; this.trail = null; chord(4);
+        setTimeout(() => say({ chapter: 'Chapter II · done', title: `The constellation <i>${NAME} & ${FROM}</i>.`, body: 'Catalogued tonight. Visible from anywhere I am.', actions: nextBtn() }), 1400);
+      } else hint(`${this.next} / ${this.pts.length}`);
+    },
+    down(x, y) { this.trail = { x, y }; this.tryHit(x, y); },
+    move(x, y) { if (this.trail) { this.trail = { x, y }; this.tryHit(x, y); } },
+    up() { this.trail = null; },
+  });
+
+  // ---------- III. make the heart (the TikTok equation) ----------
+  scenes.push({
+    enter() {
+      this.a = 0.5; this.done = false; this.glow = 0;
+      say({ chapter: 'Chapter III', title: 'Make the heart <i>yourself</i>', body: 'The equation from the internet. Drag the slider and turn the noise into something.', hint: 'drag the dot to the right' });
+      extra.innerHTML = `<div class="slider" id="sl"><div class="eq" id="eqtext"></div><input type="range" id="aRange" min="0.5" max="26" step="0.1" value="0.5" aria-label="The value of a"></div>`;
+      const sl = $('sl'); sl.style.top = `${Math.round(H * 0.6)}px`;
+      const r = $('aRange');
+      const upd = () => { this.a = Number(r.value); $('eqtext').innerHTML = `y = x<sup>⅔</sup> + 0.9·sin(<b>${this.a.toFixed(1)}</b>·π·x)·√(3.3 − x²)`; if (Math.round(this.a) !== this.lastNote) { this.lastNote = Math.round(this.a); chime(this.lastNote % 10, 0.05); } if (this.a >= 19 && !this.done) this.win(); };
+      r.addEventListener('input', upd); upd();
+    },
+    win() {
+      this.done = true; chord(3);
+      setTimeout(() => say({ chapter: 'Chapter III · done', title: 'You made that. <i>Of course</i> you did.', body: `New theorem: f(${NAME}) = everything. Proof: ask ${FROM}.`, actions: nextBtn() }), 900);
+    },
+    leave() { extra.innerHTML = ''; },
+    draw(t, now, dt) {
+      const xr = 2.05, y0 = -1.45, y1 = 2.65;
+      const scale = Math.min((W - 40) / (2 * xr), (H * 0.4) / (y1 - y0));
+      const cx = W / 2, top = H * 0.13, cy = top + y1 * scale;
+      const X = (x) => cx + x * scale, Y = (y) => cy - y * scale;
+      ctx.strokeStyle = 'rgba(248,238,243,0.14)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X(-xr), Y(0)); ctx.lineTo(X(xr), Y(0)); ctx.moveTo(X(0), Y(y0)); ctx.lineTo(X(0), Y(y1)); ctx.stroke();
+      ctx.fillStyle = 'rgba(248,238,243,0.35)'; ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      for (const v of [-1, 1]) { ctx.fillRect(X(v) - 0.5, Y(0) - 3, 1, 6); ctx.fillText(v < 0 ? '−1' : '1', X(v), Y(0) + 15); }
+      for (const v of [1, 2]) { ctx.fillRect(X(0) - 3, Y(v) - 0.5, 6, 1); ctx.fillText(String(v), X(0) - 12, Y(v) + 3); }
+      if (this.done) this.glow = Math.min(1, this.glow + dt);
+      const lim = Math.sqrt(3.3), n = 1500;
+      ctx.save(); ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+      const grad = ctx.createLinearGradient(0, Y(y1), 0, Y(y0)); grad.addColorStop(0, '#ffb8ca'); grad.addColorStop(1, '#ff4d7d');
+      ctx.strokeStyle = grad; ctx.shadowColor = 'rgba(255,77,125,0.95)'; ctx.shadowBlur = 6 + 18 * this.glow + (this.done ? 6 * beat(now) : 0);
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) { const x = -lim + (2 * lim * i) / n; const y = Math.cbrt(x * x) + 0.9 * Math.sin(this.a * Math.PI * x) * Math.sqrt(Math.max(0, 3.3 - x * x)); i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)); }
+      ctx.stroke(); ctx.restore();
+    },
+  });
+
+  // ---------- IV. grow a flower ----------
+  scenes.push({
+    enter() {
+      this.g = 0; this.gd = 0; this.drops = []; this.done = false; this.fall = [];
+      say({ chapter: 'Chapter IV', title: 'Grow a flower', body: 'I can’t bring you real ones tonight, so let’s grow one. Tap anywhere to water it.', hint: '0 / 8 drops' });
+    },
+    draw(t, now, dt) {
+      this.gd += (this.g - this.gd) * Math.min(1, dt * 2.2);
+      const cx = W / 2, base = Math.min(W * 0.36, H * 0.2), cy = H * 0.36, ground = H * 0.66;
+      // ground glow
+      const gg = ctx.createRadialGradient(cx, ground, 0, cx, ground, W * 0.5); gg.addColorStop(0, 'rgba(120,190,140,0.18)'); gg.addColorStop(1, 'rgba(120,190,140,0)');
+      ctx.fillStyle = gg; ctx.fillRect(0, ground - W * 0.5, W, W);
+      // drops
+      for (const d of this.drops) {
+        d.t += dt * 1.6; const p = easeOut(clamp(d.t));
+        const x = d.x + (cx - d.x) * p, y = d.y + (ground - 10 - d.y) * p * p;
+        ctx.fillStyle = `rgba(160,210,255,${1 - clamp(d.t - 0.85, 0, 1) * 6})`; ctx.beginPath(); ctx.ellipse(x, y, 3.5, 5.5, 0, 0, 6.283); ctx.fill();
+        if (d.t >= 1 && !d.landed) { d.landed = true; this.g = Math.min(8, this.g + 1); burst(cx, ground - 8, 10, ['#a0d2ff', '#d6ffe0', '#fff']); chime(this.g + 1); hint(`${this.g} / 8 drops`); if (this.g === 8) this.win(); }
+      }
+      this.drops = this.drops.filter((d) => d.t < 1.2);
+      const gd = this.gd;
+      // stem
+      const stemP = clamp(gd / 2.5);
+      if (stemP > 0) {
+        ctx.save(); ctx.strokeStyle = '#6fbf8a'; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.shadowColor = 'rgba(111,191,138,0.5)'; ctx.shadowBlur = 8;
+        const top = ground - (ground - cy) * stemP;
+        ctx.beginPath(); ctx.moveTo(cx, ground); ctx.bezierCurveTo(cx - 22, ground - (ground - top) * 0.35, cx + 18, ground - (ground - top) * 0.7, cx, top); ctx.stroke();
+        // leaves
+        const lp = clamp((gd - 1.5) / 1.5);
+        if (lp > 0) for (const side of [-1, 1]) {
+          const ly = ground - (ground - cy) * (side < 0 ? 0.35 : 0.55);
+          ctx.fillStyle = '#5aa974'; ctx.beginPath(); ctx.ellipse(cx + side * 22 * lp, ly, 22 * lp, 8 * lp, side * -0.6, 0, 6.283); ctx.fill();
+        }
+        ctx.restore();
+      }
+      // petals: rose curves r = cos(6θ), four rings
+      const spin = reduce ? 0 : now * 0.05;
+      const layers = [
+        { R: 1.0, rot: 0, c0: '#7a1032', c1: '#ff4d7d' }, { R: 0.8, rot: Math.PI / 12, c0: '#9b1b44', c1: '#ff7aa0' },
+        { R: 0.58, rot: 0, c0: '#c2305d', c1: '#ffb8ca' }, { R: 0.38, rot: Math.PI / 12, c0: '#e04b78', c1: '#ffd6e1' },
+      ];
+      layers.forEach((L, i) => {
+        const g = clamp(gd - 3 - i * 0.9);
+        if (g <= 0) return;
+        const R = base * L.R * (reduce ? 1 : backOut(g));
+        const grad = ctx.createRadialGradient(cx, cy, R * 0.05, cx, cy, R); grad.addColorStop(0, L.c0); grad.addColorStop(1, L.c1);
+        ctx.save(); ctx.globalAlpha = 0.92 * clamp(g * 1.6); ctx.shadowColor = 'rgba(255,77,125,0.45)'; ctx.shadowBlur = 18; ctx.fillStyle = grad;
+        ctx.beginPath();
+        for (let j = 0; j <= 720; j++) { const th = (j / 720) * 6.283; const r = R * Math.pow(Math.abs(Math.cos(6 * th)), 0.85); const a = th + L.rot + spin * (i % 2 ? -1 : 1); j ? ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a)) : ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); }
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      });
+      // golden-angle seeds
+      const seeds = Math.floor(clamp(gd - 6.5, 0, 1.5) / 1.5 * 240);
+      const golden = Math.PI * (3 - Math.sqrt(5));
+      for (let n = 1; n <= seeds; n++) { const r = Math.sqrt(n) * base * 0.0145, th = n * golden + spin * 2; ctx.fillStyle = n % 7 ? '#f6c97b' : '#fff1d6'; ctx.beginPath(); ctx.arc(cx + r * Math.cos(th), cy + r * Math.sin(th), 1.4 + (n / 240), 0, 6.283); ctx.fill(); }
+      if (seeds > 0) { ctx.fillStyle = 'rgba(246,201,123,0.75)'; ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('r = cos 6θ  ·  seeds every 137.5°', cx, cy - base * 1.15); }
+      if (this.done) { const a = clamp((t - this.doneAt) / 1.5); ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,184,202,${a})`; ctx.font = 'italic 26px "Instrument Serif", Georgia, serif'; ctx.fillText(`Rosa ${NAME.toLowerCase().replace(/\s+/g, '')}ae`, cx, ground + 34); ctx.fillStyle = `rgba(248,238,243,${0.6 * a})`; ctx.font = '10px "JetBrains Mono", monospace'; ctx.fillText(`A NEW SPECIES · DISCOVERED TONIGHT BY ${FROM.toUpperCase()}`, cx, ground + 54); }
+      // falling petals once in bloom
+      if (this.done && !reduce && Math.random() < 0.06 && this.fall.length < 16) this.fall.push({ x: rand(0.1, 0.9) * W, y: -10, vx: rand(-0.3, 0.3), vy: rand(0.5, 1.1), r: rand(0, 6.28), s: rand(5, 9) });
+      for (const p of this.fall) { p.x += p.vx + Math.sin(now + p.r) * 0.4; p.y += p.vy; p.r += 0.02; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = 'rgba(255,140,170,0.75)'; ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * 0.55, 0, 0, 6.283); ctx.fill(); ctx.restore(); }
+      this.fall = this.fall.filter((p) => p.y < H + 20);
+    },
+    down(x, y) {
+      if (this.done || this.g + this.drops.filter((d) => !d.landed).length >= 8) return;
+      this.drops.push({ x, y, t: 0 });
+    },
+    win() {
+      this.done = true; this.doneAt = (performance.now() - sceneStart) / 1000; chord(5);
+      setTimeout(() => say({ chapter: 'Chapter IV · done', title: 'Some days you don’t feel like <i>blooming</i>.', body: 'That’s okay. I’ll wait. I’m very good at waiting for you.', actions: nextBtn() }), 2600);
+    },
+  });
+
+  // ---------- V. the letter ----------
+  scenes.push({
+    enter() {
+      this.revealed = false;
+      say({ chapter: 'Chapter V', title: 'A letter', body: '', hint: 'scratch the gold away, gently' });
+      const dear = `Dear ${NAME},`;
+      extra.innerHTML = `<div class="letter" id="letter"><div class="text">
+        <p>${dear}</p>
+        <p>I know today isn’t a good one. You don’t have to explain it, or fix it, or pretend to be okay for me.</p>
+        <p>The bad days don’t make me love you any less. If anything I love you a little more on them, because I get to see all of you, not just the easy parts.</p>
+        <p>So rest. Eat something nice. Let the world wait for a bit.</p>
+        <p>And when you’re ready, I’ll be right here, with a hug that lasts too long and terrible jokes on standby.</p>
+        <p class="sign">Always yours,<br>${FROM} ♥</p>
+      </div><canvas id="foil"></canvas></div>`;
+      const letter = $('letter'), foil = $('foil');
+      const rect = letter.getBoundingClientRect();
+      foil.width = Math.round(rect.width * DPR); foil.height = Math.round(rect.height * DPR);
+      const f = foil.getContext('2d'); f.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const g = f.createLinearGradient(0, 0, rect.width, rect.height);
+      g.addColorStop(0, '#b8862f'); g.addColorStop(0.3, '#f6d58b'); g.addColorStop(0.5, '#fff1c9'); g.addColorStop(0.7, '#e2b25a'); g.addColorStop(1, '#a87726');
+      f.fillStyle = g; f.fillRect(0, 0, rect.width, rect.height);
+      for (let i = 0; i < 900; i++) { f.fillStyle = `rgba(255,255,255,${Math.random() * 0.25})`; f.fillRect(Math.random() * rect.width, Math.random() * rect.height, 1.2, 1.2); }
+      f.fillStyle = 'rgba(90,50,15,0.75)'; f.textAlign = 'center'; f.font = 'italic 26px "Instrument Serif", Georgia, serif';
+      f.fillText('for your eyes only', rect.width / 2, rect.height / 2 - 6);
+      f.font = '11px "JetBrains Mono", monospace'; f.fillText('SCRATCH GENTLY', rect.width / 2, rect.height / 2 + 18);
+      heartPathOn(f, rect.width / 2, rect.height / 2 - 52, 1.1);
+      f.globalCompositeOperation = 'destination-out';
+      let last = null, strokes = 0;
+      const pos = (e) => { const r = foil.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+      const scratch = (p) => {
+        f.lineCap = 'round'; f.lineWidth = 38; f.beginPath(); f.moveTo((last || p).x, (last || p).y); f.lineTo(p.x, p.y); f.stroke();
+        last = p;
+        if (++strokes % 12 === 0) { if (Math.random() < 0.5) chime(Math.floor(rand(0, 9)), 0.04); this.check(f, foil); }
+      };
+      foil.addEventListener('pointerdown', (e) => { e.preventDefault(); foil.setPointerCapture?.(e.pointerId); last = null; scratch(pos(e)); });
+      foil.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') { if (last !== null || e.buttons) scratch(pos(e)); } });
+      foil.addEventListener('pointerup', () => { last = null; this.check(f, foil); });
+    },
+    check(f, foil) {
+      if (this.revealed) return;
+      const data = f.getImageData(0, 0, foil.width, foil.height).data;
+      let clear = 0, total = 0;
+      for (let i = 3; i < data.length; i += 4 * 40) { total++; if (data[i] < 40) clear++; }
+      if (clear / total > 0.5) {
+        this.revealed = true; foil.style.opacity = 0; setTimeout(() => foil.remove(), 1000); chord(1);
+        hint('');
+        setTimeout(() => say({ chapter: 'Chapter V · done', title: 'I meant <i>every word</i>.', body: '', actions: nextBtn() }), 1200);
+      }
+    },
+    leave() { extra.innerHTML = ''; },
+    draw() {},
+  });
+  // Points that trace a word, for stars to fly into.
+  function textPoints(word, size, cy, style = '') {
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${style} ${size}px "Instrument Serif", Georgia, serif`;
+    g.fillText(word, W / 2, cy);
+    const data = g.getImageData(0, 0, W, H).data, step = Math.max(3, Math.round(size / 26)), pts = [];
+    for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) if (data[(y * W + x) * 4 + 3] > 140) pts.push({ x, y, sx: W / 2 + rand(-40, 40), sy: H * 0.55 + rand(-40, 40), d: rand(0, 0.8), r: rand(0.9, 1.7), tw: rand(0, 6.28), gold: Math.random() < 0.2 });
+    return pts;
+  }
+  function heartPathOn(c, cx, cy, k) { c.fillStyle = 'rgba(179,39,79,0.8)'; c.beginPath(); for (let i = 0; i <= 80; i++) { const t = (i / 80) * 6.283; const x = cx + heartX(t) * k, y = cy + heartY(t) * k; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.fill(); }
+
+  // ---------- VI. one question ----------
+  scenes.push({
+    enter() {
+      this.tries = 0; this.yes = false; this.fw = 0;
+      say({ chapter: 'Chapter VI', title: 'One small question', body: 'Will you let me cheer you up, even a little?' });
+      extra.innerHTML = `<div class="ask"><button class="yes" id="yes">Yes</button><button class="no" id="no">No</button></div>`;
+      const no = $('no');
+      const LABELS = ['No', 'Are you sure?', 'Really sure?', 'Think again', 'Last chance…'];
+      const dodge = (e) => {
+        if (this.yes) return;
+        e.preventDefault(); e.stopPropagation();
+        if (no.className === 'yes') { this.say_yes(); return; }
+        this.tries++;
+        if (this.tries >= LABELS.length) { no.textContent = 'Yes ♥'; no.className = 'yes'; no.style.transform = ''; no.onclick = () => this.say_yes(); return; }
+        no.textContent = LABELS[this.tries];
+        const dx = rand(-0.32, 0.32) * W, dy = rand(-0.22, 0.08) * H;
+        no.style.transform = `translate(${dx}px, ${dy}px) rotate(${rand(-12, 12)}deg)`;
+        chime(this.tries - 1, 0.05);
+      };
+      no.addEventListener('pointerdown', dodge);
+      no.addEventListener('mouseenter', dodge);
+      no.addEventListener('click', (e) => { e.stopPropagation(); if (no.className === 'yes') this.say_yes(); });
+      $('yes').addEventListener('click', (e) => { e.stopPropagation(); this.say_yes(); });
+    },
+    say_yes() {
+      if (this.yes) return;
+      this.yes = true; extra.innerHTML = ''; chord(0); setTimeout(() => chord(4), 500);
+      say({ chapter: 'Chapter VI · done', title: 'Best answer. <i>Look up.</i>', body: '' });
+      setTimeout(() => say({ chapter: 'Chapter VI · done', title: 'Best answer. <i>Look up.</i>', body: 'Tap the sky for more.', actions: nextBtn('One last thing') }), 3200);
+    },
+    leave() { extra.innerHTML = ''; },
+    draw(t, now, dt) {
+      if (!this.yes) { glowHeart(W / 2, H * 0.3, Math.min(W, H) * 0.004 * (1 + 0.1 * beat(now)), 'rgba(255,77,125,0.8)', 30); return; }
+      this.fw -= dt;
+      if (this.fw <= 0 && t < 600) { this.fw = rand(0.35, 0.8); heartFirework(rand(0.2, 0.8) * W, rand(0.15, 0.45) * H); }
+    },
+    down(x, y) { if (this.yes) heartFirework(x, y); },
+  });
+
+  // ---------- finale ----------
+  const COUPONS = [
+    ['A hug that lasts', 'way too long'],
+    ['Movie night.', 'You pick. Zero complaints.'],
+    ['Your favourite food,', 'delivered by me'],
+    ['One whole day', 'where you’re the boss'],
+  ];
+  scenes.push({
+    enter() {
+      this.picked = false; this.hugged = false; this.floaters = [];
+      say({ chapter: 'Finale', title: 'Pick a <i>prize</i>', body: 'One coupon. Choose carefully, or don’t. I’ll honour all of them anyway.' });
+      extra.innerHTML = `<div class="coupons" id="coupons">${COUPONS.map((c, i) => `<button class="coupon" data-i="${i}"><small>${FROM} → ${NAME} · Nº ${String(i + 1).padStart(2, '0')}</small>${c[0]}<br><i>${c[1]}</i></button>`).join('')}</div>`;
+      document.querySelectorAll('.coupon').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.pick(b); }));
+    },
+    pick(b) {
+      if (this.picked) return;
+      this.picked = true; chord(2);
+      const r = b.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, 40);
+      document.querySelectorAll('.coupon').forEach((c) => c.classList.add(c === b ? 'picked' : 'dim'));
+      const date = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+      b.querySelector('small').textContent = `Redeemed · ${date}`;
+      say({ chapter: 'Finale', title: 'Redeemed. <i>Valid forever.</i>', body: 'Take a screenshot and show it to me. No expiry date, no small print.', actions: [{ label: 'And one more thing', go: () => this.hugStep() }] });
+    },
+    hugStep() {
+      extra.innerHTML = `<button class="hold" id="hold" aria-label="Press and hold the heart for a hug"><svg viewBox="-20 -20 40 40" aria-hidden="true"><defs><clipPath id="hc"><path id="hp"></path></clipPath></defs><path id="ho" fill="none" stroke="#ff4d7d" stroke-width="1.2"></path><rect id="hf" x="-20" y="20" width="40" height="40" fill="#ff4d7d" clip-path="url(#hc)"></rect></svg></button>`;
+      let d = ''; for (let i = 0; i <= 120; i++) { const t = (i / 120) * 6.283; d += `${i ? 'L' : 'M'}${(heartX(t) * 1.05).toFixed(2)} ${(heartY(t) * 1.05 + 1).toFixed(2)}`; } d += 'Z';
+      $('hp').setAttribute('d', d); $('ho').setAttribute('d', d);
+      say({ chapter: 'Finale', title: 'Press and hold <i>the heart</i>', body: 'Keep holding. This is a hug, and hugs take a second.' });
+      const hold = $('hold'); let holding = false, start = 0, raf = 0;
+      const fill = (p) => $('hf').setAttribute('y', String(20 - 40 * p));
+      const loop = () => {
+        if (!holding) return;
+        const p = clamp((performance.now() - start) / 2600); fill(p);
+        if (Math.random() < 0.3) { const r = hold.getBoundingClientRect(); sparks.push({ x: r.left + r.width / 2 + rand(-60, 60), y: r.top + r.height / 2 + rand(-60, 60), vx: 0, vy: -20, life: 1, decay: 1.2, r: 1.6, c: '#ffb8ca' }); }
+        if (p >= 1) return this.hug();
+        raf = requestAnimationFrame(loop);
+      };
+      hold.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); holding = true; start = performance.now(); hold.setPointerCapture?.(e.pointerId); chime(0, 0.08); loop(); });
+      const rel = (e) => { e.stopPropagation(); if (!holding) return; holding = false; cancelAnimationFrame(raf); fill(0); };
+      hold.addEventListener('pointerup', rel); hold.addEventListener('pointercancel', rel);
+      hold.addEventListener('click', (e) => e.stopPropagation());
+      hold.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.hug(); } });
+    },
+    hug() {
+      if (this.hugged) return;
+      this.hugged = true; extra.innerHTML = ''; chord(0); setTimeout(() => chord(2), 400); setTimeout(() => chord(4), 800);
+      for (let i = 0; i < 5; i++) setTimeout(() => heartFirework(rand(0.2, 0.8) * W, rand(0.2, 0.45) * H, rand(8, 12)), i * 280);
+      say({ chapter: 'The end, for now', title: `That’s how much, <i>${NAME}</i>.`, body: `I love you. On the good days, and especially on the grey ones. — ${FROM}`, actions: [{ label: 'Play it again', ghost: true, go: () => go(1) }] });
+      // Stars fly in and spell her name across the sky.
+      setTimeout(() => { this.word = [...textPoints(NAME, Math.min(W * 0.32, 150), H * 0.22, 'italic'), ...textPoints(`love, ${FROM}`, Math.min(W * 0.09, 40), H * 0.22 + Math.min(W * 0.2, 96), 'italic')]; this.wordAt = performance.now() / 1000; chord(4); }, 1600);
+    },
+    leave() { extra.innerHTML = ''; },
+    draw(t, now, dt) {
+      if (!reduce && Math.random() < 0.07) this.floaters.push({ x: rand(0.05, 0.95) * W, y: H + 20, vy: rand(20, 45), s: rand(0.3, 0.7), w: rand(0, 6), life: 1, gold: Math.random() < 0.25 });
+      for (const f of this.floaters) { f.y -= f.vy * dt; f.x += Math.sin(now * 1.4 + f.w) * 0.3; glowHeart(f.x, f.y, f.s, f.gold ? 'rgba(246,201,123,0.8)' : 'rgba(255,77,125,0.7)', 10); }
+      this.floaters = this.floaters.filter((f) => f.y > -30);
+      if (this.hugged && !this.word) glowHeart(W / 2, H * 0.32, Math.min(W, H) * 0.0075 * (1 + 0.09 * beat(now)), 'rgba(255,77,125,0.95)', 44);
+      if (this.word) {
+        const wt = now - this.wordAt;
+        for (const p of this.word) {
+          const q = reduce ? 1 : easeOut(clamp((wt - p.d) / 1.8));
+          const x = p.sx + (p.x - p.sx) * q, y = p.sy + (p.y - p.sy) * q;
+          const tw = 0.6 + 0.4 * Math.sin(now * 3 + p.tw);
+          ctx.fillStyle = p.gold ? `rgba(246,201,123,${tw})` : `rgba(255,${150 + Math.round(60 * tw)},${185},${0.95})`;
+          ctx.beginPath(); ctx.arc(x, y, p.r, 0, 6.283); ctx.fill();
+        }
+      }
+    },
+    down(x, y) { if (this.hugged) heartFirework(x, y); },
+  });
+
+  // ================= progress path =================
+  const path = $('path');
+  path.innerHTML = ROMAN.map((_, i) => `${i ? '<b></b>' : ''}<i></i>`).join('');
+  function updatePath() {
+    const dots = path.querySelectorAll('i'), lines = path.querySelectorAll('b');
+    dots.forEach((d, i) => { d.classList.toggle('lit', i < current - 1 || current === scenes.length - 1); d.classList.toggle('now', i === current - 1); });
+    lines.forEach((l, i) => l.classList.toggle('lit', i < current - 1));
+    path.style.opacity = current === 0 ? 0 : 1;
+  }
+
+  // ================= flow =================
+  let current = 0, sceneStart = performance.now();
+  function go(i) {
+    scenes[current].leave?.();
+    current = i; sceneStart = performance.now(); sparks = [];
+    scenes[i].enter?.();
+    updatePath();
+  }
+  function next() { go(Math.min(current + 1, scenes.length - 1)); }
+
+  // pointer → current scene (buttons and the letter handle their own)
+  const isUi = (e) => e.target.closest('button, input, .letter, .card');
+  let down = false;
+  addEventListener('pointerdown', (e) => { if (isUi(e)) return; down = true; audioStart(); scenes[current].down?.(e.clientX, e.clientY); });
+  addEventListener('pointermove', (e) => { if (!down) return; scenes[current].move?.(e.clientX, e.clientY); });
+  addEventListener('pointerup', (e) => { if (!down) return; down = false; scenes[current].up?.(e.clientX, e.clientY); });
+
+  let last = performance.now();
+  function frame(ms) {
+    const dt = Math.min(0.05, (ms - last) / 1000); last = ms;
+    const now = ms / 1000;
+    ctx.clearRect(0, 0, W, H);
+    drawSky(now, dt);
+    scenes[current].draw?.((ms - sceneStart) / 1000, now, dt);
+    drawSparks(dt);
+    requestAnimationFrame(frame);
+  }
+  go(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
