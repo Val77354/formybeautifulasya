@@ -51,6 +51,8 @@
   .path i.lit { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
   .path b.lit { background: rgba(246, 201, 123, .6); }
   .path i.now { background: var(--rose); box-shadow: 0 0 12px var(--rose); }
+  .hudr { display: flex; gap: 8px; align-items: center; }
+  .mute.album-btn { color: #fff; border-color: rgba(255, 184, 202, .6); background: rgba(255, 77, 125, .45); box-shadow: 0 0 18px rgba(255, 77, 125, .45); font-size: 12px; padding: 9px 14px; }
   .mute {
     pointer-events: auto; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim);
     background: var(--glass); border: 1px solid var(--faint); border-radius: 999px; padding: 7px 12px; cursor: pointer;
@@ -109,12 +111,15 @@
   input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 6px rgba(255, 77, 125, .35), 0 0 22px var(--rose); }
   input[type=range]:focus-visible { outline: 2px solid var(--blush); outline-offset: 4px; border-radius: 8px; }
   /* chapter V letter */
+  body.letter-mode .panel { display: none; }
+  .letterwrap { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: calc(env(safe-area-inset-top, 0px) + 40px); }
+  .letterwrap .hint2 { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); min-height: 1em; text-align: center; }
   .letter {
-    position: relative; width: min(90vw, 25rem); max-height: 62vh; margin-top: -14vh; border-radius: 6px; overflow: hidden;
+    position: relative; width: min(90vw, 25rem); border-radius: 6px; overflow: hidden;
     background: radial-gradient(120% 90% at 30% 10%, #fffaf3, var(--paper) 60%, #f1e2cf); color: var(--sepia);
     box-shadow: 0 30px 80px rgba(0, 0, 0, .55); transform: rotate(-1.2deg);
   }
-  .letter .text { padding: 26px 24px 30px; font-family: var(--hand); font-size: 23px; line-height: 1.32; overflow-y: auto; max-height: 62vh; }
+  .letter .text { padding: 22px 22px 22px; font-family: var(--hand); font-size: 23px; line-height: 1.28; overflow: hidden; }
   .letter .text p { margin: 0 0 12px; }
   .letter .sign { text-align: right; font-size: 27px; color: #b3274f; }
   .letter canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; transition: opacity 1s ease; }
@@ -165,7 +170,7 @@
 
 <div class="hud">
   <div class="path" id="path" aria-hidden="true"></div>
-  <button class="mute" id="mute" hidden>♪ on</button>
+  <div class="hudr"><button class="mute album-btn" id="albumBtn" hidden>♥ Our album</button><button class="mute" id="mute" hidden>♪ on</button></div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"><small id="toastN"></small><span id="toastT"></span></div>
@@ -217,6 +222,7 @@
           return { src: 'photos/' + encodeURIComponent(f.name), cap };
         });
       PHOTOS.slice(0, 4).forEach((ph) => { const im = new Image(); im.src = ph.src; });
+      if (PHOTOS.length) $('albumBtn').hidden = false;
     })
     .catch(() => {});
   const FROM = 'Valeri';
@@ -284,6 +290,7 @@
     if (pad && AC) pad.g.gain.linearRampToValueAtTime(on ? 0.03 : 0, AC.currentTime + 0.6);
   }
   $('mute').addEventListener('click', (e) => { e.stopPropagation(); setMusic(!musicOn); });
+  $('albumBtn').addEventListener('click', (e) => { e.stopPropagation(); audioStart(); go(ALBUM); });
 
   // ================= the sky (every scene) =================
   const stars = Array.from({ length: 190 }, () => ({ x: Math.random(), y: Math.random(), z: rand(0.2, 1), p: rand(0, 6.28), s: rand(0.4, 1.6) }));
@@ -584,7 +591,7 @@
       const golden = Math.PI * (3 - Math.sqrt(5));
       for (let n = 1; n <= seeds; n++) { const r = Math.sqrt(n) * base * 0.0145, th = n * golden + spin * 2; ctx.fillStyle = n % 7 ? '#f6c97b' : '#fff1d6'; ctx.beginPath(); ctx.arc(cx + r * Math.cos(th), cy + r * Math.sin(th), 1.4 + (n / 240), 0, 6.283); ctx.fill(); }
       if (seeds > 0) { ctx.fillStyle = 'rgba(246,201,123,0.75)'; ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('r = cos 6θ  ·  seeds every 137.5°', cx, cy - base * 1.15); }
-      if (this.done) { const a = clamp((t - this.doneAt) / 1.5); ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,184,202,${a})`; ctx.font = 'italic 26px "Instrument Serif", Georgia, serif'; ctx.fillText(`Rosa ${NAME.toLowerCase().replace(/\s+/g, '')}ae`, cx, ground + 34); ctx.fillStyle = `rgba(248,238,243,${0.6 * a})`; ctx.font = '10px "JetBrains Mono", monospace'; ctx.fillText(`A NEW SPECIES · DISCOVERED TONIGHT BY ${FROM.toUpperCase()}`, cx, ground + 54); }
+      if (false) { const a = clamp((t - this.doneAt) / 1.5); ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,184,202,${a})`; ctx.font = 'italic 26px "Instrument Serif", Georgia, serif'; ctx.fillText(`Rosa ${NAME.toLowerCase().replace(/\s+/g, '')}ae`, cx, ground + 34); ctx.fillStyle = `rgba(248,238,243,${0.6 * a})`; ctx.font = '10px "JetBrains Mono", monospace'; ctx.fillText(`A NEW SPECIES · DISCOVERED TONIGHT BY ${FROM.toUpperCase()}`, cx, ground + 54); }
       // falling petals once in bloom
       if (this.done && !reduce && Math.random() < 0.06 && this.fall.length < 16) this.fall.push({ x: rand(0.1, 0.9) * W, y: -10, vx: rand(-0.3, 0.3), vy: rand(0.5, 1.1), r: rand(0, 6.28), s: rand(5, 9) });
       for (const p of this.fall) { p.x += p.vx + Math.sin(now + p.r) * 0.4; p.y += p.vy; p.r += 0.02; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = 'rgba(255,140,170,0.75)'; ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * 0.55, 0, 0, 6.283); ctx.fill(); ctx.restore(); }
@@ -596,7 +603,7 @@
     },
     win() {
       this.done = true; this.doneAt = (performance.now() - sceneStart) / 1000; chord(5);
-      setTimeout(() => say({ chapter: 'Chapter IV · done', title: 'Some days you don’t feel like <i>blooming</i>.', body: 'That’s okay. I’ll wait. I’m very good at waiting for you.', actions: nextBtn() }), 2600);
+      setTimeout(() => say({ chapter: `A new species · discovered by ${FROM}`, title: `<i>Rosa ${NAME.toLowerCase()}ae</i>`, body: `It started growing the day we met, and it has grown a little more every single day since. It’s nowhere near done.`, actions: [{ label: 'Next', go: () => say({ chapter: 'Chapter IV · done', title: 'Some days you don’t feel like <i>blooming</i>.', body: 'That’s okay. I’ll wait. I’m very good at waiting for you.', actions: nextBtn() }) }] }), 2600);
     },
   });
 
@@ -606,14 +613,19 @@
       this.revealed = false;
       say({ chapter: 'Chapter V', title: 'A letter', body: '', hint: 'scratch the gold away, gently' });
       const dear = `Dear ${NAME},`;
-      extra.innerHTML = `<div class="letter" id="letter"><div class="text">
+      document.body.classList.add('letter-mode');
+      extra.innerHTML = `<div class="letterwrap"><div class="letter" id="letter"><div class="text" id="ltext">
         <p>${dear}</p>
         <p>I know today isn’t a good one. You don’t have to explain it, or fix it, or pretend to be okay for me.</p>
         <p>The bad days don’t make me love you any less. If anything I love you a little more on them, because I get to see all of you, not just the easy parts.</p>
         <p>So rest. Eat something nice. Let the world wait for a bit.</p>
         <p>And when you’re ready, I’ll be right here, with a hug that lasts too long and terrible jokes on standby.</p>
         <p class="sign">Always yours,<br>${FROM} ♥</p>
-      </div><canvas id="foil"></canvas></div>`;
+      </div><canvas id="foil"></canvas></div><div class="hint2" id="lhint">scratch the gold away, gently</div><div id="lnext"></div></div>`;
+      // Shrink the handwriting until the whole letter, signature included, fits above the button.
+      const lt = $('ltext'), room = innerHeight - 150 - (parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0);
+      let fs = 23;
+      while (fs > 14 && lt.scrollHeight > room) { fs -= 1; lt.style.fontSize = fs + 'px'; }
       const letter = $('letter'), foil = $('foil');
       const rect = letter.getBoundingClientRect();
       foil.width = Math.round(rect.width * DPR); foil.height = Math.round(rect.height * DPR);
@@ -645,11 +657,11 @@
       for (let i = 3; i < data.length; i += 4 * 40) { total++; if (data[i] < 40) clear++; }
       if (clear / total > 0.5) {
         this.revealed = true; foil.style.opacity = 0; setTimeout(() => foil.remove(), 1000); chord(1);
-        hint('');
-        setTimeout(() => say({ chapter: 'Chapter V · done', title: 'I meant <i>every word</i>.', body: '', actions: nextBtn() }), 1200);
+        $('lhint').textContent = 'I meant every word';
+        setTimeout(() => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Next chapter'; b.addEventListener('click', (e) => { e.stopPropagation(); next(); }); $('lnext').appendChild(b); }, 1200);
       }
     },
-    leave() { extra.innerHTML = ''; },
+    leave() { extra.innerHTML = ''; document.body.classList.remove('letter-mode'); },
     draw() {},
   });
   // Points that trace a word, for stars to fly into.
@@ -864,7 +876,8 @@
   }
   go(0);
   // "…#album" opens straight to the photos.
-  if (location.hash === '#album') setTimeout(() => PHOTOS.length && go(ALBUM), 1500);
+  const jump = { album: ALBUM, rose: 4, letter: 5 }[location.hash.slice(1)];
+  if (jump) setTimeout(() => (jump !== ALBUM || PHOTOS.length) && go(jump), 1500);
   requestAnimationFrame(frame);
 })();
 </script>
