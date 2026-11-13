@@ -140,6 +140,22 @@
   .hold { position: relative; width: 132px; height: 132px; border: 0; background: none; padding: 0; cursor: pointer; touch-action: none; -webkit-touch-callout: none; margin-top: -14vh; }
   .hold svg { width: 100%; height: 100%; overflow: visible; }
   .hold:focus-visible { outline: 2px solid var(--gold); outline-offset: 6px; border-radius: 50%; }
+  /* album */
+  .album { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding-bottom: 26vh; }
+  .stack { position: relative; width: min(76vw, 330px); aspect-ratio: 0.82; touch-action: none; }
+  .pola {
+    position: absolute; inset: 0; background: #fbf7f0; border-radius: 4px; padding: 10px 10px 0;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .55); display: flex; flex-direction: column;
+    transition: transform .7s cubic-bezier(.2, .9, .3, 1.1), opacity .6s ease; will-change: transform;
+  }
+  .pola img { width: 100%; flex: 1; min-height: 0; object-fit: cover; border-radius: 2px; background: #e9dfd3; display: block; -webkit-user-drag: none; pointer-events: none; }
+  .pola .cap { font-family: var(--hand); font-size: 24px; color: #3a2430; text-align: center; padding: 6px 4px 8px; min-height: 46px; line-height: 1.1; }
+  .albnav { display: flex; align-items: center; gap: 18px; font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--dim); }
+  .albnav button { pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--faint); background: var(--glass); color: var(--ink); font-size: 22px; cursor: pointer; }
+  .albnav button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .album.heart .pola .cap { font-size: 0; min-height: 10px; }
+  .album.heart .albnav { visibility: hidden; }
+  @media (prefers-reduced-motion: reduce) { .pola { transition: none; } }
   @media (prefers-reduced-motion: reduce) { .card, .toast, .coupon, .no { transition: none; } }
 </style>
 
@@ -183,6 +199,26 @@
   const beat = (s) => { const b = s % 1.15; return Math.exp(-Math.pow((b - 0.1) / 0.05, 2)) + 0.55 * Math.exp(-Math.pow((b - 0.33) / 0.06, 2)); };
 
   const NAME = 'Asya';
+  // Album photos: whatever is in the site's photos/ folder. File names become captions
+  // ("01 our first date.jpg" -> "our first date"); camera names like IMG_1234 get no caption.
+  let PHOTOS = [];
+  // photos/list.json names them in order; without it, ask GitHub what's in the folder.
+  fetch('photos/list.json', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((names) => names.map((name) => ({ name })))
+    .catch(() => fetch('https://api.github.com/repos/Val77354/formybeautifulasya/contents/photos', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])))
+    .then((list) => {
+      PHOTOS = (Array.isArray(list) ? list : [])
+        .filter((f) => /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+        .map((f) => {
+          let cap = f.name.replace(/\.[^.]+$/, '').replace(/^\d+[\s._-]*/, '').replace(/[_-]+/g, ' ').trim();
+          if (/^(img|dsc|pxl|photo|image|whatsapp|telegram|screenshot)\b/i.test(cap) || !/\p{L}/u.test(cap)) cap = '';
+          return { src: 'photos/' + encodeURIComponent(f.name), cap };
+        });
+      PHOTOS.slice(0, 4).forEach((ph) => { const im = new Image(); im.src = ph.src; });
+    })
+    .catch(() => {});
   const FROM = 'Valeri';
 
   function resize() {
@@ -713,7 +749,9 @@
       if (this.hugged) return;
       this.hugged = true; extra.innerHTML = ''; chord(0); setTimeout(() => chord(2), 400); setTimeout(() => chord(4), 800);
       for (let i = 0; i < 5; i++) setTimeout(() => heartFirework(rand(0.2, 0.8) * W, rand(0.2, 0.45) * H, rand(8, 12)), i * 280);
-      say({ chapter: 'The end, for now', title: `That’s how much, <i>${NAME}</i>.`, body: `I love you. On the good days, and especially on the grey ones. — ${FROM}`, actions: [{ label: 'Play it again', ghost: true, go: () => go(1) }] });
+      const endActions = [{ label: 'Play it again', ghost: true, go: () => go(1) }];
+      if (PHOTOS.length) endActions.unshift({ label: 'Our album ♥', go: () => go(ALBUM) });
+      say({ chapter: 'The end, for now', title: `That’s how much, <i>${NAME}</i>.`, body: `I love you. On the good days, and especially on the grey ones. — ${FROM}`, actions: endActions });
       // Stars fly in and spell her name across the sky.
       setTimeout(() => { this.word = [...textPoints(NAME, Math.min(W * 0.32, 150), H * 0.22, 'italic'), ...textPoints(`love, ${FROM}`, Math.min(W * 0.09, 40), H * 0.22 + Math.min(W * 0.2, 96), 'italic')]; this.wordAt = performance.now() / 1000; chord(4); }, 1600);
     },
@@ -737,13 +775,63 @@
     down(x, y) { if (this.hugged) heartFirework(x, y); },
   });
 
+  // ---------- album ----------
+  const ALBUM = scenes.length;
+  scenes.push({
+    enter() {
+      this.i = 0; this.whole = false; this.floaters = [];
+      say({ chapter: 'Our album', title: `${NAME} & ${FROM}`, body: 'Swipe, or use the arrows.', hint: '' });
+      extra.innerHTML = `<div class="album" id="album"><div class="stack" id="stack">${PHOTOS.map((ph, i) => `<div class="pola" data-i="${i}"><img src="${ph.src}" alt="${ph.cap || 'Us'}" loading="${i < 3 ? 'eager' : 'lazy'}" decoding="async"><div class="cap">${ph.cap}</div></div>`).join('')}</div><div class="albnav"><button id="prev" aria-label="Previous photo">‹</button><span id="count"></span><button id="nextp" aria-label="Next photo">›</button></div></div>`;
+      this.cards = [...document.querySelectorAll('.pola')];
+      this.tilt = this.cards.map(() => rand(-7, 7));
+      $('prev').addEventListener('click', (e) => { e.stopPropagation(); this.show(this.i - 1); });
+      $('nextp').addEventListener('click', (e) => { e.stopPropagation(); this.show(this.i + 1); });
+      const stack = $('stack'); let sx = null;
+      stack.addEventListener('pointerdown', (e) => { sx = e.clientX; stack.setPointerCapture?.(e.pointerId); });
+      stack.addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx; sx = null; this.show(this.i + (Math.abs(dx) > 40 && dx > 0 ? -1 : 1)); });
+      this.show(0, true);
+    },
+    show(i, quiet) {
+      if (this.whole) return;
+      if (i >= PHOTOS.length) return this.heart();
+      this.i = Math.max(0, i);
+      this.cards.forEach((c, k) => {
+        const d = k - this.i;
+        if (d < 0) { c.style.transform = `translate(-130vw, -6vh) rotate(${-25 + this.tilt[k]}deg)`; c.style.opacity = 0; c.style.zIndex = 0; }
+        else { c.style.transform = `translate(${d * 6}px, ${d * 5}px) rotate(${this.tilt[k] * (d ? 1 : 0.35)}deg) scale(${1 - Math.min(d, 4) * 0.03})`; c.style.opacity = d > 4 ? 0 : 1; c.style.zIndex = 100 - d; }
+      });
+      $('count').textContent = `${this.i + 1} / ${PHOTOS.length}`;
+      if (!quiet) { chime(this.i + 2, 0.09); const r = $('stack').getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height * 0.85, 14); }
+      hint(this.i === PHOTOS.length - 1 ? 'tap once more' : '');
+    },
+    heart() {
+      this.whole = true; chord(2); setTimeout(() => chord(4), 450);
+      $('album').classList.add('heart');
+      const n = this.cards.length, r = $('stack').getBoundingClientRect();
+      const k = Math.min(W * 0.021, H * 0.0125), s = Math.min(0.32, (32 * k) / (r.width * 3.4));
+      this.cards.forEach((c, j) => {
+        const t = (j / n) * 6.283;
+        const x = W / 2 + heartX(t) * k - (r.left + r.width / 2), y = H * 0.32 + heartY(t) * k - (r.top + r.height / 2);
+        c.style.opacity = 1; c.style.zIndex = j;
+        setTimeout(() => { c.style.transform = `translate(${x}px, ${y}px) rotate(${this.tilt[j]}deg) scale(${s})`; }, j * 90);
+      });
+      say({ chapter: 'Our album', title: 'Every one of these is <i>my favourite</i>.', body: `And there are so many more to make. — ${FROM}`, actions: [{ label: 'Look again', ghost: true, go: () => go(ALBUM) }, { label: 'Start from the beginning', ghost: true, go: () => go(1) }] });
+    },
+    leave() { extra.innerHTML = ''; },
+    draw(t, now, dt) {
+      if (!reduce && Math.random() < 0.05) this.floaters.push({ x: rand(0.05, 0.95) * W, y: H + 20, vy: rand(20, 45), s: rand(0.3, 0.6), w: rand(0, 6) });
+      for (const f of this.floaters) { f.y -= f.vy * dt; f.x += Math.sin(now * 1.4 + f.w) * 0.3; glowHeart(f.x, f.y, f.s, 'rgba(255,77,125,0.6)', 10); }
+      this.floaters = this.floaters.filter((f) => f.y > -30);
+    },
+  });
+
   // ================= progress path =================
   const path = $('path');
   path.innerHTML = ROMAN.map((_, i) => `${i ? '<b></b>' : ''}<i></i>`).join('');
   function updatePath() {
     const dots = path.querySelectorAll('i'), lines = path.querySelectorAll('b');
-    dots.forEach((d, i) => { d.classList.toggle('lit', i < current - 1 || current === scenes.length - 1); d.classList.toggle('now', i === current - 1); });
-    lines.forEach((l, i) => l.classList.toggle('lit', i < current - 1));
+    dots.forEach((d, i) => { d.classList.toggle('lit', i < current - 1 || current >= ROMAN.length + 1); d.classList.toggle('now', i === current - 1 && current <= ROMAN.length); });
+    lines.forEach((l, i) => l.classList.toggle('lit', i < current - 1 || current >= ROMAN.length + 1));
     path.style.opacity = current === 0 ? 0 : 1;
   }
 
@@ -775,6 +863,8 @@
     requestAnimationFrame(frame);
   }
   go(0);
+  // "…#album" opens straight to the photos.
+  if (location.hash === '#album') setTimeout(() => PHOTOS.length && go(ALBUM), 1500);
   requestAnimationFrame(frame);
 })();
 </script>
