@@ -226,6 +226,9 @@
     })
     .catch(() => {});
   const FROM = 'Valeri';
+  // Day 1 = 17 July 2026, the day we started dating. Counted on her phone's own calendar.
+  const _now = new Date();
+  const DAYS = Math.floor((new Date(_now.getFullYear(), _now.getMonth(), _now.getDate()) - new Date(2026, 6, 17)) / 86400000) + 1;
 
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -389,7 +392,7 @@
   scenes.push({
     enter() {
       say({
-        chapter: `For ${NAME} · from ${FROM}`,
+        chapter: `For ${NAME} · from ${FROM} · day ${DAYS}`,
         title: `Drawn for <i>${NAME}</i>`,
         body: 'A small night sky, made by hand, for a not-so-great day. Six little things to do. No rush at all.',
         actions: [
@@ -590,7 +593,13 @@
       const seeds = Math.floor(clamp(gd - 6.5, 0, 1.5) / 1.5 * 240);
       const golden = Math.PI * (3 - Math.sqrt(5));
       for (let n = 1; n <= seeds; n++) { const r = Math.sqrt(n) * base * 0.0145, th = n * golden + spin * 2; ctx.fillStyle = n % 7 ? '#f6c97b' : '#fff1d6'; ctx.beginPath(); ctx.arc(cx + r * Math.cos(th), cy + r * Math.sin(th), 1.4 + (n / 240), 0, 6.283); ctx.fill(); }
-      if (seeds > 0) { ctx.fillStyle = 'rgba(246,201,123,0.75)'; ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('r = cos 6θ  ·  seeds every 137.5°', cx, cy - base * 1.15); }
+      if (seeds > 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,184,202,0.95)'; ctx.font = 'italic 22px "Instrument Serif", Georgia, serif';
+        ctx.fillText(`day ${DAYS} of growing`, cx, cy - base * 1.32);
+        ctx.fillStyle = 'rgba(246,201,123,0.75)'; ctx.font = '10px "JetBrains Mono", monospace';
+        ctx.fillText('r = cos 6θ  ·  seeds every 137.5°', cx, cy - base * 1.15);
+      }
       if (false) { const a = clamp((t - this.doneAt) / 1.5); ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,184,202,${a})`; ctx.font = 'italic 26px "Instrument Serif", Georgia, serif'; ctx.fillText(`Rosa ${NAME.toLowerCase().replace(/\s+/g, '')}ae`, cx, ground + 34); ctx.fillStyle = `rgba(248,238,243,${0.6 * a})`; ctx.font = '10px "JetBrains Mono", monospace'; ctx.fillText(`A NEW SPECIES · DISCOVERED TONIGHT BY ${FROM.toUpperCase()}`, cx, ground + 54); }
       // falling petals once in bloom
       if (this.done && !reduce && Math.random() < 0.06 && this.fall.length < 16) this.fall.push({ x: rand(0.1, 0.9) * W, y: -10, vx: rand(-0.3, 0.3), vy: rand(0.5, 1.1), r: rand(0, 6.28), s: rand(5, 9) });
@@ -603,7 +612,7 @@
     },
     win() {
       this.done = true; this.doneAt = (performance.now() - sceneStart) / 1000; chord(5);
-      setTimeout(() => say({ chapter: `A new species · discovered by ${FROM}`, title: `<i>Rosa ${NAME.toLowerCase()}ae</i>`, body: `It started growing the day we met, and it has grown a little more every single day since. It’s nowhere near done.`, actions: [{ label: 'Next', go: () => say({ chapter: 'Chapter IV · done', title: 'Some days you don’t feel like <i>blooming</i>.', body: 'That’s okay. I’ll wait. I’m very good at waiting for you.', actions: nextBtn() }) }] }), 2600);
+      setTimeout(() => say({ chapter: `A new species · discovered by ${FROM}`, title: `<i>Rosa ${NAME.toLowerCase()}ae</i>`, body: `First bloomed on 17 July, the day we started. Today is day ${DAYS}, and it has grown a little more every single one of them. It’s nowhere near done.`, actions: [{ label: 'Next', go: () => say({ chapter: 'Chapter IV · done', title: 'Some days you don’t feel like <i>blooming</i>.', body: 'That’s okay. I’ll wait. I’m very good at waiting for you.', actions: nextBtn() }) }] }), 2600);
     },
   });
 
